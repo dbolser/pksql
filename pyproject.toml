@@ -1,0 +1,18 @@
+[project]
+name = "pksql"
+version = "0.1.0"
+description = "SQL CLI for Parquet files using DuckDB"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "duckdb>=0.10.0",
+    "click>=8.0.0",
+    "rich>=13.0.0",
+]
+
+[project.scripts]
+pksql = "pksql.main:cli"
+
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
