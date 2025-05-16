@@ -4,11 +4,33 @@ version = "0.1.0"
 description = "SQL CLI for Parquet files using DuckDB"
 readme = "README.md"
 requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Dan Bolser", email = "dan@example.com"}  # Update with your actual email
+]
+keywords = ["sql", "parquet", "cli", "duckdb"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Database",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
 dependencies = [
     "duckdb>=0.10.0",
     "click>=8.0.0",
     "rich>=13.0.0",
 ]
+
+[project.urls]
+"Homepage" = "https://github.com/dbolser/pksql"
+"Bug Tracker" = "https://github.com/dbolser/pksql/issues"
 
 [project.scripts]
 pksql = "pksql.main:cli"

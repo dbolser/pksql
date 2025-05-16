@@ -147,7 +147,7 @@ The implementation uses Click for the CLI interface and DuckDB for querying Parq
 
 ## TODO
 
-● Update Todos
+● Completed
   ⎿  ☒ Add DuckDB and click dependencies
      ☒ Set up project structure for CLI tool
      ☒ Implement CLI interface with query handling
@@ -156,4 +156,15 @@ The implementation uses Click for the CLI interface and DuckDB for querying Parq
      ☒ Implement interactive mode
      ☒ Add support for file aliases
      ☒ Update README with interactive mode documentation
+     ☒ Add user installation instructions to README
+     ☒ Set up GitHub Actions CI pipeline
+     ☒ Configure package for PyPI publishing
+     ☒ Add deployment workflow to publish to PyPI
+
+● Next Steps
+  ⎿  ☐ Add unit tests for core functionality
+     ☐ Publish to PyPI (after creating PyPI account and API token)
+     ☐ Add more output format options (CSV, JSON, etc.)
+     ☐ Add schema inspection commands
+     ☐ Support for saving query results to files
 
