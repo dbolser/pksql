@@ -4,13 +4,27 @@ Command line SQL on parquet files using DuckDB
 
 ## Installation
 
-### Using pip
+### For Users
+
+Install directly from GitHub:
+
+```bash
+# Using pip
+pip install git+https://github.com/dbolser/pksql.git
+
+# Using pip with SSH (if you have SSH keys configured)
+pip install git+ssh://git@github.com/dbolser/pksql.git
+```
+
+### For Developers
+
+#### Using pip
 
 ```bash
 pip install -e .
 ```
 
-### Using uv
+#### Using uv
 
 If you prefer using uv:
 
