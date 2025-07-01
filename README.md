@@ -128,6 +128,7 @@ Glob patterns allow you to query multiple files at once:
 - Use the alias feature to simplify queries and avoid shell parsing issues
 - You can use standard SQL syntax supported by DuckDB
 - The output uses DuckDB's built-in formatting for readability
+- Use `--output-format csv` or `--output-format tsv` for machine readable output
 - Query execution time is displayed after each query
 
 ## Requirements
@@ -164,7 +165,7 @@ The implementation uses Click for the CLI interface and DuckDB for querying Parq
 ● Next Steps
   ⎿  ☐ Add unit tests for core functionality
      ☐ Publish to PyPI (after creating PyPI account and API token)
-     ☐ Add more output format options (CSV, JSON, etc.)
+     ☒ Add more output format options (CSV, JSON, etc.)
      ☐ Add schema inspection commands
      ☐ Support for saving query results to files
 

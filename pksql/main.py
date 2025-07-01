@@ -14,7 +14,11 @@ console = Console()
 ))
 @click.argument('args', nargs=-1)
 @click.option('--interactive', '-i', is_flag=True, help='Start in interactive mode')
-def cli(args, interactive):
+@click.option('--output-format', '-F', 'output_format',
+              type=click.Choice(['table', 'csv', 'tsv'], case_sensitive=False),
+              default='table',
+              help='Output format for query results')
+def cli(args, interactive, output_format):
     """Run SQL queries on Parquet files using DuckDB.
     
     There are two main ways to use pksql:
@@ -73,12 +77,27 @@ def cli(args, interactive):
         try:
             # Start timing
             start_time = time.time()
-            
+
             # Use duckdb.sql which provides nice formatting out of the box
             result = duckdb.sql(full_query)
-            
-            # Display the results using DuckDB's built-in formatting
-            print(result)
+
+            is_query = full_query.strip().lower().startswith(
+                ("select", "show", "describe", "explain", "with", "insert", "update", "delete")
+            ) or bool(result.columns)
+
+            if output_format == "table":
+                if is_query:
+                    # Display results using DuckDB's pretty formatting
+                    print(result)
+            else:
+                delimiter = "," if output_format == "csv" else "\t"
+                if is_query:
+                    header = delimiter.join(result.columns)
+                    print(header)
+                    for row in result.fetchall():
+                        print(delimiter.join(map(str, row)))
+                else:
+                    console.print("Query executed successfully.")
             
             # End timing and display
             end_time = time.time()
