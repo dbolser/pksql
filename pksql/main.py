@@ -89,8 +89,6 @@ def cli(args, interactive, output_format):
                 if is_query:
                     # Display results using DuckDB's pretty formatting
                     print(result)
-                else:
-                    console.print("Query executed successfully.")
             else:
                 delimiter = "," if output_format == "csv" else "\t"
                 if is_query:
