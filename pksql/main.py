@@ -82,8 +82,8 @@ def cli(args, interactive, output_format):
             result = duckdb.sql(full_query)
 
             is_query = full_query.strip().lower().startswith(
-                ("select", "show", "describe", "explain")
-            )
+                ("select", "show", "describe", "explain", "with", "insert", "update", "delete")
+            ) or bool(result.columns)
 
             if output_format == "table":
                 if is_query:
