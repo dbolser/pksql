@@ -14,14 +14,15 @@ jobs:
         python-version: ['3.8', '3.9', '3.10', '3.11']
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
         with:
-          python-version: ${{ matrix.python-version }}
-      - uses: yezz123/setup-uv@v3
-      - name: Install dependencies
-        run: |
-          uv pip install -e .[test]
+          enable-cache: true
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+      - name: Install the project
+        run: uv sync --extra test
       - name: Run tests
         run: uv run pytest -q
       - name: Check import
-        run: uv python -c "import pksql"
+        run: uv run python -c "import pksql"
