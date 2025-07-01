@@ -28,6 +28,9 @@ dependencies = [
     "rich>=13.0.0",
 ]
 
+[project.optional-dependencies]
+test = ["pytest>=8.3.5"]
+
 [project.urls]
 "Homepage" = "https://github.com/dbolser/pksql"
 "Bug Tracker" = "https://github.com/dbolser/pksql/issues"
