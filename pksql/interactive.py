@@ -4,6 +4,7 @@ import cmd
 import duckdb
 import glob
 import os
+import shlex
 import sys
 import time
 from rich.console import Console
@@ -33,11 +34,20 @@ Type exit or quit to exit.
             # Start timing
             start_time = time.time()
             
-            if line.lower().startswith(("select", "show", "describe", "explain")):
-                result = self.conn.sql(line)
-                print(result)
+            # Execute the query
+            result = self.conn.sql(line)
+            
+            # Enhanced query type detection (same as main.py)
+            query_lower = line.strip().lower()
+            is_query = (
+                query_lower.startswith(("select", "show", "describe", "explain", "with", "pragma")) or
+                query_lower.startswith("create table") and "as select" in query_lower or
+                bool(result.columns)
+            )
+            
+            if is_query:
+                console.print(str(result))
             else:
-                self.conn.sql(line)
                 console.print("Query executed successfully.")
             
             # End timing and display
@@ -64,8 +74,14 @@ Type exit or quit to exit.
         Examples: 
           alias data /path/to/data.parquet
           alias alldata '/path/to/*.parquet'
+          alias spaced "/path with spaces/data.parquet"
         """
-        args = arg.strip().split(maxsplit=1)
+        try:
+            args = shlex.split(arg.strip())
+        except ValueError as e:
+            console.print(f"[bold red]Error:[/bold red] Invalid argument format: {e}")
+            return
+            
         if len(args) < 2:
             console.print("[bold red]Error:[/bold red] alias requires both an alias name and a file path.")
             return
@@ -77,13 +93,14 @@ Type exit or quit to exit.
         file_path = file_path.strip("'\"")
         
         # Verify the path exists (for specific files) or has matches (for glob patterns)
-        if '*' in file_path or '?' in file_path:
-            # This is a glob pattern
-            # Let DuckDB handle it directly without checking first
-            pass
+        if '*' in file_path or '?' in file_path or '[' in file_path:
+            # This is a glob pattern - check if it matches any files
+            matches = glob.glob(file_path)
+            if not matches:
+                console.print(f"Warning: No files found matching pattern: {file_path}")
         elif not os.path.exists(file_path):
             console.print(f"Warning: File not found: {file_path}")
-            console.print("If this is a glob pattern, enclose it in single quotes.")
+            console.print("If this is a glob pattern, enclose it in quotes.")
             
         # Register the alias
         self.file_aliases[alias_name] = file_path
@@ -112,11 +129,17 @@ Type exit or quit to exit.
         
         Usage: unalias <alias_name>
         """
-        alias_name = arg.strip()
-        if not alias_name:
-            console.print("Error: unalias requires an alias name.")
+        try:
+            args = shlex.split(arg.strip())
+        except ValueError as e:
+            console.print(f"[bold red]Error:[/bold red] Invalid argument format: {e}")
             return
             
+        if not args:
+            console.print("[bold red]Error:[/bold red] unalias requires an alias name.")
+            return
+            
+        alias_name = args[0]
         if alias_name in self.file_aliases:
             del self.file_aliases[alias_name]
             try:
@@ -154,6 +177,10 @@ Type exit or quit to exit.
     
     def do_exit(self, arg):
         """Exit the interactive shell."""
+        try:
+            self.conn.close()
+        except Exception:
+            pass  # Connection might already be closed
         console.print("Goodbye!")
         return True
         

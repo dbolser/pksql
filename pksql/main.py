@@ -43,7 +43,6 @@ def cli(args, interactive, output_format):
         
         # Check if we have file aliases to register
         if len(args) >= 3 and "as" in args:
-            from pksql.interactive import PKSQLShell
             shell = PKSQLShell()
             
             # Parse file aliases (format: file.parquet as alias)
@@ -81,21 +80,25 @@ def cli(args, interactive, output_format):
             # Use duckdb.sql which provides nice formatting out of the box
             result = duckdb.sql(full_query)
 
-            is_query = full_query.strip().lower().startswith(
-                ("select", "show", "describe", "explain", "with", "insert", "update", "delete")
-            ) or bool(result.columns)
+            # Enhanced query type detection
+            query_lower = full_query.strip().lower()
+            is_query = (
+                query_lower.startswith(("select", "show", "describe", "explain", "with", "pragma")) or
+                query_lower.startswith("create table") and "as select" in query_lower or
+                bool(result.columns)
+            )
 
             if output_format == "table":
                 if is_query:
                     # Display results using DuckDB's pretty formatting
-                    print(result)
+                    console.print(str(result))
             else:
                 delimiter = "," if output_format == "csv" else "\t"
                 if is_query:
                     header = delimiter.join(result.columns)
-                    print(header)
+                    console.print(header)
                     for row in result.fetchall():
-                        print(delimiter.join(map(str, row)))
+                        console.print(delimiter.join(map(str, row)))
                 else:
                     console.print("Query executed successfully.")
             
@@ -115,7 +118,7 @@ def cli(args, interactive, output_format):
             
         except Exception as e:
             console.print(f"Error: {str(e)}")
-            sys.exit(1)
+            raise click.ClickException(str(e))
     
     else:
         # No arguments and not interactive mode, show help
