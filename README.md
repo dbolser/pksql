@@ -128,7 +128,7 @@ Glob patterns allow you to query multiple files at once:
 - Use the alias feature to simplify queries and avoid shell parsing issues
 - You can use standard SQL syntax supported by DuckDB
 - The output uses DuckDB's built-in formatting for readability
-- Use `--output-format csv` or `--output-format tsv` for machine readable output
+- Use `--output-format csv`, `--output-format tsv`, or `--output-format json` for machine readable output
 - Query execution time is displayed after each query
 
 ## Requirements
