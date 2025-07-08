@@ -1,11 +1,9 @@
 """CLI entry point for pksql."""
 
 import sys
-import os
-import time
 import click
-import duckdb
 from rich.console import Console
+from pksql.core import execute_query
 
 console = Console()
 
@@ -73,46 +71,12 @@ def cli(args, interactive, output_format):
     elif args:
         # Join all arguments as they form the SQL query
         full_query = ' '.join(args)
-        
+
         try:
-            # Start timing
-            start_time = time.time()
-
-            # Use duckdb.sql which provides nice formatting out of the box
-            result = duckdb.sql(full_query)
-
-            is_query = full_query.strip().lower().startswith(
-                ("select", "show", "describe", "explain", "with", "insert", "update", "delete")
-            ) or bool(result.columns)
-
-            if output_format == "table":
-                if is_query:
-                    # Display results using DuckDB's pretty formatting
-                    print(result)
-            else:
-                delimiter = "," if output_format == "csv" else "\t"
-                if is_query:
-                    header = delimiter.join(result.columns)
-                    print(header)
-                    for row in result.fetchall():
-                        print(delimiter.join(map(str, row)))
-                else:
-                    console.print("Query executed successfully.")
-            
-            # End timing and display
-            end_time = time.time()
-            elapsed = end_time - start_time
-            
-            # Format query time based on duration
-            if elapsed < 0.001:
-                time_str = f"{elapsed*1000000:.2f} μs"
-            elif elapsed < 1:
-                time_str = f"{elapsed*1000:.2f} ms"
-            else:
-                time_str = f"{elapsed:.3f} sec"
-                
+            output, time_str = execute_query(full_query, output_format)
+            if output:
+                print(output)
             console.print(f"Query time: {time_str}")
-            
         except Exception as e:
             console.print(f"Error: {str(e)}")
             sys.exit(1)

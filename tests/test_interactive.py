@@ -1,5 +1,6 @@
 import pytest
 import duckdb
+from pksql.core import execute_query
 from pksql.interactive import PKSQLShell
 
 
