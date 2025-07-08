@@ -22,12 +22,9 @@ def json_serializer(obj):
         # Convert binary data to base64 string
         import base64
         return base64.b64encode(obj).decode('utf-8')
-    elif hasattr(obj, '__str__'):
+    else:
         # Fallback for any other non-serializable types
         return str(obj)
-    else:
-        # Last resort - return string representation
-        return repr(obj)
 
 @click.command(context_settings=dict(
     ignore_unknown_options=True,
