@@ -1,4 +1,5 @@
 import time
+import json
 from typing import Optional, Tuple
 
 import duckdb
@@ -12,7 +13,7 @@ def execute_query(sql: str, output_format: str = "table", conn: Optional[duckdb.
     sql : str
         SQL statement to execute.
     output_format : str, optional
-        One of ``"table"``, ``"csv"`` or ``"tsv"``.
+        One of ``"table"``, ``"csv"``, ``"tsv"`` or ``"json"``.
     conn : duckdb.DuckDBPyConnection, optional
         Existing connection to use. If ``None`` a new in-memory connection is
         created for the query.
@@ -32,7 +33,7 @@ def execute_query(sql: str, output_format: str = "table", conn: Optional[duckdb.
     # Determine if we should expect results to display
     is_query = sql.strip().lower().startswith(
         ("select", "show", "describe", "explain", "with", "insert", "update", "delete")
-    ) or bool(result.columns)
+    ) or (result is not None and hasattr(result, 'columns') and bool(result.columns))
 
     output_lines = []
     if output_format == "table":
@@ -40,13 +41,19 @@ def execute_query(sql: str, output_format: str = "table", conn: Optional[duckdb.
             output_lines.append(str(result))
         else:
             output_lines.append("Query executed successfully.")
-    else:
+    elif output_format in ("csv", "tsv"):
         delimiter = "," if output_format == "csv" else "\t"
         if is_query:
             header = delimiter.join(result.columns)
             output_lines.append(header)
             for row in result.fetchall():
                 output_lines.append(delimiter.join(map(str, row)))
+        else:
+            output_lines.append("Query executed successfully.")
+    elif output_format == "json":
+        if is_query:
+            rows = [dict(zip(result.columns, row)) for row in result.fetchall()]
+            output_lines.append(json.dumps(rows))
         else:
             output_lines.append("Query executed successfully.")
 

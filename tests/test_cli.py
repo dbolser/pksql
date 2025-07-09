@@ -1,5 +1,6 @@
 import pytest
 import duckdb
+import json
 from pksql.core import execute_query
 
 from click.testing import CliRunner
