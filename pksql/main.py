@@ -13,7 +13,7 @@ console = Console()
 @click.argument('args', nargs=-1)
 @click.option('--interactive', '-i', is_flag=True, help='Start in interactive mode')
 @click.option('--output-format', '-F', 'output_format',
-              type=click.Choice(['table', 'csv', 'tsv'], case_sensitive=False),
+              type=click.Choice(['table', 'csv', 'tsv', 'json'], case_sensitive=False),
               default='table',
               help='Output format for query results')
 def cli(args, interactive, output_format):

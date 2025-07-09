@@ -40,6 +40,15 @@ def test_cli_tsv_output():
     assert "1\t2" in result.output
 
 
+def test_cli_json_output():
+    runner = CliRunner()
+    result = runner.invoke(cli, ["--output-format", "json", "SELECT 1 AS a, 2 AS b"])
+    assert result.exit_code == 0
+    first_line = result.output.splitlines()[0]
+    data = json.loads(first_line)
+    assert data == [{"a": 1, "b": 2}]
+
+
 def test_cli_invalid_query():
     runner = CliRunner()
     result = runner.invoke(cli, ["SELECT", "*"])
