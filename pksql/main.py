@@ -6,9 +6,25 @@ import time
 import json
 import click
 import duckdb
+from decimal import Decimal
+from datetime import datetime, date, time as time_type
 from rich.console import Console
 
 console = Console()
+
+def json_serializer(obj):
+    """Custom JSON serializer for non-serializable objects."""
+    if isinstance(obj, (datetime, date, time_type)):
+        return obj.isoformat()
+    elif isinstance(obj, Decimal):
+        return float(obj)
+    elif isinstance(obj, bytes):
+        # Convert binary data to base64 string
+        import base64
+        return base64.b64encode(obj).decode('utf-8')
+    else:
+        # Fallback for any other non-serializable types
+        return str(obj)
 
 @click.command(context_settings=dict(
     ignore_unknown_options=True,
@@ -102,7 +118,7 @@ def cli(args, interactive, output_format):
             elif output_format == "json":
                 if is_query:
                     rows = [dict(zip(result.columns, row)) for row in result.fetchall()]
-                    print(json.dumps(rows))
+                    print(json.dumps(rows, default=json_serializer))
                 else:
                     console.print("Query executed successfully.")
             
