@@ -3,6 +3,7 @@
 import sys
 import os
 import time
+import shlex
 import click
 import duckdb
 from rich.console import Console
@@ -37,33 +38,35 @@ def cli(args, interactive, output_format):
         pksql -i
         pksql -i data.parquet as mydata
     """
+    parsed_args = shlex.split(" ".join(args))
+
     # Check if we should enter interactive mode
-    if interactive or (len(args) >= 3 and "as" in args):
+    if interactive or (len(parsed_args) >= 3 and "as" in parsed_args):
         from pksql.interactive import start_interactive_shell, PKSQLShell
-        
+
         # Check if we have file aliases to register
-        if len(args) >= 3 and "as" in args:
+        if len(parsed_args) >= 3 and "as" in parsed_args:
             from pksql.interactive import PKSQLShell
             shell = PKSQLShell()
-            
+
             # Parse file aliases (format: file.parquet as alias)
             i = 0
-            while i < len(args):
+            while i < len(parsed_args):
                 # Find the pattern: file_path as alias
-                if i + 2 < len(args) and args[i+1].lower() == "as":
-                    file_path = args[i]
-                    alias = args[i+2]
-                    
+                if i + 2 < len(parsed_args) and parsed_args[i+1].lower() == "as":
+                    file_path = parsed_args[i]
+                    alias = parsed_args[i+2]
+
                     # Register the alias - let the shell handle file existence checks
                     try:
-                        shell.do_alias(f"{alias} {file_path}")
+                        shell.do_alias(f"{alias} {shlex.quote(file_path)}")
                     except Exception as e:
                         console.print(f"Error: Failed to register alias: {str(e)}")
-                    
+
                     i += 3
                 else:
                     i += 1
-            
+
             shell.cmdloop()
         else:
             # Start the interactive shell with no pre-registered aliases

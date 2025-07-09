@@ -49,3 +49,18 @@ def test_glob_lists_files(tmp_path, capsys):
     assert "Found" in out
     for p in paths:
         assert p in out
+
+
+def test_alias_with_spaces(tmp_path, capsys):
+    dir_path = tmp_path / "with space"
+    dir_path.mkdir()
+    file_path = dir_path / "data.parquet"
+    create_parquet(file_path)
+
+    shell = PKSQLShell()
+    shell.do_alias(f"mydata '{file_path}'")
+    shell.default("SELECT COUNT(*) FROM mydata")
+
+    out = capsys.readouterr().out
+    assert "Alias mydata registered" in out
+    assert "1" in out

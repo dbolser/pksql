@@ -45,3 +45,19 @@ def test_cli_invalid_query():
     # Invalid SQL should cause non-zero exit code
     assert result.exit_code != 0
     assert "Error" in result.output
+
+
+def test_cli_alias_with_spaces(tmp_path, monkeypatch):
+    dir_path = tmp_path / "with space"
+    dir_path.mkdir()
+    file_path = dir_path / "data.parquet"
+    duckdb.sql(f"COPY (SELECT 1 AS id) TO '{file_path}' (FORMAT PARQUET)")
+
+    from pksql.interactive import PKSQLShell
+    monkeypatch.setattr(PKSQLShell, "cmdloop", lambda self: None)
+
+    runner = CliRunner()
+    arg = f'"{file_path}" as mydata'
+    result = runner.invoke(cli, ["-i", arg])
+    assert result.exit_code == 0
+    assert "Alias mydata registered" in result.output
