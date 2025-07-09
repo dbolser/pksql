@@ -3,6 +3,7 @@
 import sys
 import os
 import time
+import json
 import click
 import duckdb
 from rich.console import Console
@@ -15,7 +16,7 @@ console = Console()
 @click.argument('args', nargs=-1)
 @click.option('--interactive', '-i', is_flag=True, help='Start in interactive mode')
 @click.option('--output-format', '-F', 'output_format',
-              type=click.Choice(['table', 'csv', 'tsv'], case_sensitive=False),
+              type=click.Choice(['table', 'csv', 'tsv', 'json'], case_sensitive=False),
               default='table',
               help='Output format for query results')
 def cli(args, interactive, output_format):
@@ -89,13 +90,19 @@ def cli(args, interactive, output_format):
                 if is_query:
                     # Display results using DuckDB's pretty formatting
                     print(result)
-            else:
+            elif output_format in ("csv", "tsv"):
                 delimiter = "," if output_format == "csv" else "\t"
                 if is_query:
                     header = delimiter.join(result.columns)
                     print(header)
                     for row in result.fetchall():
                         print(delimiter.join(map(str, row)))
+                else:
+                    console.print("Query executed successfully.")
+            elif output_format == "json":
+                if is_query:
+                    rows = [dict(zip(result.columns, row)) for row in result.fetchall()]
+                    print(json.dumps(rows))
                 else:
                     console.print("Query executed successfully.")
             
