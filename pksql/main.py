@@ -100,7 +100,7 @@ def cli(args, interactive, output_format):
 
             is_query = full_query.strip().lower().startswith(
                 ("select", "show", "describe", "explain", "with", "insert", "update", "delete")
-            ) or bool(result.columns)
+            ) or (result is not None and bool(result.columns))
 
             if output_format == "table":
                 if is_query:
