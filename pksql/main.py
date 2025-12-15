@@ -98,9 +98,8 @@ def cli(args, interactive, output_format):
             # Use duckdb.sql which provides nice formatting out of the box
             result = duckdb.sql(full_query)
 
-            is_query = full_query.strip().lower().startswith(
-                ("select", "show", "describe", "explain", "with", "insert", "update", "delete")
-            ) or bool(result.columns)
+            # Determine if this is a query that returns results by checking the result object
+            is_query = result is not None and hasattr(result, 'columns') and bool(result.columns)
 
             if output_format == "table":
                 if is_query:
