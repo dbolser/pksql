@@ -66,7 +66,7 @@ def cli(args, interactive, output_format):
         pksql -i
         pksql -i data.parquet as mydata
     """
-    parsed_args = shlex.split(" ".join(args))
+    parsed_args = list(args)
 
     # Check if we should enter interactive mode
     if interactive or (len(parsed_args) >= 3 and "as" in parsed_args):
