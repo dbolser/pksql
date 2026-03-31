@@ -177,7 +177,7 @@ Type exit or quit to exit.
 
     def emptyline(self):
         """Do nothing on empty line."""
-        pass
+        return False
 
     def do_help(self, arg):
         """Show help for commands."""
