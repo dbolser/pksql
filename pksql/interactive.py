@@ -1,7 +1,6 @@
 """Interactive shell for pksql."""
 
 import cmd
-import shlex
 import duckdb
 import glob
 import os
@@ -66,16 +65,18 @@ Type exit or quit to exit.
           alias data /path/to/data.parquet
           alias alldata '/path/to/*.parquet'
         """
-        args = shlex.split(arg)
-        if len(args) < 2:
+        parts = arg.strip().split(maxsplit=1)
+        if len(parts) < 2:
             console.print("[bold red]Error:[/bold red] alias requires both an alias name and a file path.")
             return
-            
-        alias_name = args[0]
-        file_path = args[1]
-        
-        # Remove quotes if present
-        file_path = file_path.strip("'\"")
+
+        alias_name = parts[0]
+        # Strip matching outer quotes to support both quoted and unquoted paths
+        raw_path = parts[1]
+        if len(raw_path) >= 2 and raw_path[0] == raw_path[-1] and raw_path[0] in ("'", '"'):
+            file_path = raw_path[1:-1]
+        else:
+            file_path = raw_path
         
         # Verify the path exists (for specific files) or has matches (for glob patterns)
         if '*' in file_path or '?' in file_path:

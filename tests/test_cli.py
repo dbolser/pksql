@@ -67,7 +67,6 @@ def test_cli_alias_with_spaces(tmp_path, monkeypatch):
     monkeypatch.setattr(PKSQLShell, "cmdloop", lambda self: None)
 
     runner = CliRunner()
-    arg = f'"{file_path}" as mydata'
-    result = runner.invoke(cli, ["-i", arg])
+    result = runner.invoke(cli, ["-i", str(file_path), "as", "mydata"])
     assert result.exit_code == 0
     assert "Alias mydata registered" in result.output
