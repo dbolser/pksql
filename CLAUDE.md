@@ -1,40 +1,8 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Use uv to manage dependencies, e.g. `uv run pytest`.
 
-## Project Overview
 
-pksql is a command-line SQL tool for querying Parquet files using DuckDB. It supports both direct query mode and an interactive shell with file aliasing capabilities.
-
-## Development Commands
-
-### Installation and Setup
-```bash
-# Install in development mode using pip
-pip install -e .
-
-# Or using uv (preferred)
-uv pip install -e .
-```
-
-### Running the Tool
-```bash
-# Direct query mode
-pksql SELECT * FROM 'file.parquet'
-
-# Interactive mode
-pksql -i
-
-# Interactive mode with pre-registered aliases
-pksql -i data.parquet as mydata
-```
-
-## Architecture
-
-### Core Components
-
-- **pksql/main.py**: CLI entry point using Click framework. Handles argument parsing and delegates to either direct query execution or interactive mode.
-- **pksql/interactive.py**: Interactive shell implementation using Python's `cmd` module. Provides SQL REPL with file aliasing, glob pattern support, and DuckDB integration.
 
 ### Key Design Patterns
 
