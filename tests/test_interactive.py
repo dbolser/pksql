@@ -16,10 +16,10 @@ def test_alias_and_query(tmp_path, capsys):
     shell.do_alias(f"mydata {file_path}")
     shell.default("SELECT COUNT(*) FROM mydata")
 
-    captured = capsys.readouterr().out
-    assert "Alias mydata registered" in captured
-    assert "1" in captured
-    assert "Query time" in captured
+    captured = capsys.readouterr()
+    assert "Alias mydata registered" in captured.out
+    assert "1" in captured.out
+    assert "Query time" in captured.err
 
 
 def test_unalias(tmp_path, capsys):

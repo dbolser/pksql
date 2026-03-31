@@ -14,6 +14,7 @@ import duckdb
 from rich.console import Console
 
 console = Console()
+conserr = Console(stderr=True)
 
 
 def json_serializer(obj):
@@ -130,13 +131,13 @@ def cli(args, interactive, output_format):
                     for row in result.fetchall():
                         print(delimiter.join(map(str, row)))
                 else:
-                    console.print("Query executed successfully.")
+                    conserr.print("Query executed successfully.")
             elif output_format == "json":
                 if is_query:
                     rows = [dict(zip(result.columns, row)) for row in result.fetchall()]
                     print(json.dumps(rows, default=json_serializer))
                 else:
-                    console.print("Query executed successfully.")
+                    conserr.print("Query executed successfully.")
 
             # End timing and display
             end_time = time.time()
@@ -150,7 +151,7 @@ def cli(args, interactive, output_format):
             else:
                 time_str = f"{elapsed:.3f} sec"
 
-            console.print(f"Query time: {time_str}")
+            conserr.print(f"Query time: {time_str}")
 
         except Exception as e:
             console.print(f"Error: {str(e)}")
