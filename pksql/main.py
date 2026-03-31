@@ -74,8 +74,6 @@ def cli(args, interactive, output_format):
 
         # Check if we have file aliases to register
         if len(parsed_args) >= 3 and "as" in parsed_args:
-            from pksql.interactive import PKSQLShell
-
             shell = PKSQLShell()
 
             # Parse file aliases (format: file.parquet as alias)
