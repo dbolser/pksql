@@ -1,6 +1,6 @@
 [project]
 name = "pksql"
-version = "0.1.0"
+version = "0.1.5"
 description = "SQL CLI for Parquet files using DuckDB"
 readme = "README.md"
 requires-python = ">=3.10"
