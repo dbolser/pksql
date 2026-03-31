@@ -2,6 +2,9 @@
 
 Command line SQL on parquet files using DuckDB
 
+pksql is a command-line SQL tool for querying Parquet files using DuckDB. It supports both direct query mode and an interactive shell with file aliasing capabilities.
+
+
 ## Installation
 
 ### For Users

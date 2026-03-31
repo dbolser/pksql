@@ -1,8 +1,8 @@
-import pytest
-import duckdb
 import json
 
+import duckdb
 from click.testing import CliRunner
+
 from pksql.main import cli
 
 
@@ -19,7 +19,7 @@ def test_cli_simple_query():
     result = runner.invoke(cli, ["SELECT 1 AS a"])
     assert result.exit_code == 0
     assert "1" in result.output
-    assert "Query time" in result.output
+    assert "Query time" in result.stderr
 
 
 def test_cli_csv_output():
@@ -44,8 +44,8 @@ def test_cli_json_output():
     runner = CliRunner()
     result = runner.invoke(cli, ["--output-format", "json", "SELECT 1 AS a, 2 AS b"])
     assert result.exit_code == 0
-    first_line = result.output.splitlines()[0]
-    data = json.loads(first_line)
+    json_line = result.output.splitlines()[1]
+    data = json.loads(json_line)
     assert data == [{"a": 1, "b": 2}]
 
 
@@ -55,3 +55,19 @@ def test_cli_invalid_query():
     # Invalid SQL should cause non-zero exit code
     assert result.exit_code != 0
     assert "Error" in result.output
+
+
+def test_cli_alias_with_spaces(tmp_path, monkeypatch):
+    dir_path = tmp_path / "with space"
+    dir_path.mkdir()
+    file_path = dir_path / "data.parquet"
+    duckdb.sql(f"COPY (SELECT 1 AS id) TO '{file_path}' (FORMAT PARQUET)")
+
+    from pksql.interactive import PKSQLShell
+
+    monkeypatch.setattr(PKSQLShell, "cmdloop", lambda self: None)
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["-i", str(file_path), "as", "mydata"])
+    assert result.exit_code == 0
+    assert "Alias mydata registered" in result.output
