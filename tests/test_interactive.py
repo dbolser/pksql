@@ -51,6 +51,22 @@ def test_glob_lists_files(tmp_path, capsys):
         assert p in out
 
 
+def test_do_exit_closes_connection(capsys):
+    shell = PKSQLShell()
+    assert shell.do_exit("") is True
+    assert "Goodbye" in capsys.readouterr().out
+    # The connection should be closed; further queries must fail.
+    with pytest.raises(Exception):
+        shell.conn.sql("SELECT 1")
+
+
+def test_alias_glob_no_match_warns(tmp_path, capsys):
+    shell = PKSQLShell()
+    pattern = tmp_path / "missing_*.parquet"
+    shell.do_alias(f"empty '{pattern}'")
+    assert "No files currently match pattern" in capsys.readouterr().out
+
+
 def test_alias_with_spaces(tmp_path, capsys):
     dir_path = tmp_path / "with space"
     dir_path.mkdir()

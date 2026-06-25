@@ -72,10 +72,13 @@ Type exit or quit to exit.
             file_path = raw_path
 
         # Verify the path exists (for specific files) or has matches (for glob patterns)
-        if "*" in file_path or "?" in file_path:
-            # This is a glob pattern
-            # Let DuckDB handle it directly without checking first
-            pass
+        if any(ch in file_path for ch in "*?["):
+            # Glob pattern: warn early if nothing matches yet, but still register
+            # it (matching files may appear later; DuckDB validates at query time).
+            if not glob.glob(file_path):
+                console.print(
+                    f"Warning: No files currently match pattern: {file_path}"
+                )
         elif not os.path.exists(file_path):
             console.print(f"Warning: File not found: {file_path}")
             console.print("If this is a glob pattern, enclose it in single quotes.")
@@ -153,6 +156,11 @@ Type exit or quit to exit.
 
     def do_exit(self, arg):
         """Exit the interactive shell."""
+        # Release the DuckDB connection so long-running sessions don't leak it.
+        try:
+            self.conn.close()
+        except Exception:
+            pass  # Connection may already be closed.
         console.print("Goodbye!")
         return True
 
