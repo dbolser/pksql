@@ -3,12 +3,12 @@
 import cmd
 import glob
 import os
-import shlex
 import sys
-import time
 
 import duckdb
 from rich.console import Console
+
+from pksql.core import execute_query
 
 console = Console()
 conserr = Console(stderr=True)
@@ -32,27 +32,12 @@ Type exit or quit to exit.
     def default(self, line):
         """Handle SQL queries by default."""
         try:
-            # Start timing
-            start_time = time.time()
+            output, time_str = execute_query(line, conn=self.conn)
 
-            if line.lower().startswith(("select", "show", "describe", "explain")):
-                result = self.conn.sql(line)
-                print(result)
+            if output is not None:
+                print(output)
             else:
-                self.conn.sql(line)
                 console.print("Query executed successfully.")
-
-            # End timing and display
-            end_time = time.time()
-            elapsed = end_time - start_time
-
-            # Format query time based on duration
-            if elapsed < 0.001:
-                time_str = f"{elapsed * 1000000:.2f} μs"
-            elif elapsed < 1:
-                time_str = f"{elapsed * 1000:.2f} ms"
-            else:
-                time_str = f"{elapsed:.3f} sec"
 
             conserr.print(f"Query time: {time_str}")
         except Exception as e:
