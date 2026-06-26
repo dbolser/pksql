@@ -3,7 +3,6 @@
 import cmd
 import glob
 import os
-import sys
 
 import duckdb
 from rich.console import Console
@@ -71,25 +70,35 @@ Type exit or quit to exit.
         else:
             file_path = raw_path
 
-        # Verify the path exists (for specific files) or has matches (for glob patterns)
-        if "*" in file_path or "?" in file_path:
-            # This is a glob pattern
-            # Let DuckDB handle it directly without checking first
+        # Verify the path exists (for specific files) or has matches (for glob
+        # patterns). DuckDB binds the view at CREATE time, so an empty local
+        # glob can't be deferred — warn and bail out rather than register an
+        # alias whose view creation is about to fail.
+        if "://" in file_path:
+            # Remote path (s3://, https://, ...). DuckDB/httpfs resolves these;
+            # local globbing can't validate them, so skip the check.
             pass
-        elif not os.path.exists(file_path):
+        elif any(ch in file_path for ch in "*?["):
+            expanded = os.path.expanduser(os.path.expandvars(file_path))
+            if not glob.glob(expanded, recursive=True):
+                console.print(
+                    f"Warning: No files currently match pattern: {file_path}"
+                )
+                console.print("Alias not registered.")
+                return
+        elif not os.path.exists(os.path.expanduser(os.path.expandvars(file_path))):
             console.print(f"Warning: File not found: {file_path}")
             console.print("If this is a glob pattern, enclose it in single quotes.")
 
-        # Register the alias
-        self.file_aliases[alias_name] = file_path
-
-        # Create a view for the file or glob pattern
+        # Create the view first; only record the alias if it succeeds, so a
+        # failed CREATE never leaves a half-registered alias in `aliases`.
         try:
             # Use single quotes around the file path to ensure proper handling by DuckDB
             quoted_path = f"'{file_path}'"
             self.conn.sql(
                 f"CREATE OR REPLACE VIEW {alias_name} AS SELECT * FROM {quoted_path}"
             )
+            self.file_aliases[alias_name] = file_path
             console.print(f"Alias {alias_name} registered for {file_path}")
         except Exception as e:
             console.print(f"Error: Failed to create view: {str(e)}")
@@ -153,11 +162,21 @@ Type exit or quit to exit.
 
     def do_exit(self, arg):
         """Exit the interactive shell."""
+        # Release the DuckDB connection so long-running sessions don't leak it.
+        try:
+            self.conn.close()
+        except Exception:
+            pass  # Connection may already be closed.
         console.print("Goodbye!")
         return True
 
     def do_quit(self, arg):
         """Exit the interactive shell."""
+        return self.do_exit(arg)
+
+    def do_EOF(self, arg):
+        """Exit on end-of-file (Ctrl-D)."""
+        print()  # Move off the prompt line that Ctrl-D leaves behind.
         return self.do_exit(arg)
 
     def emptyline(self):
@@ -200,4 +219,9 @@ def start_interactive_shell():
         shell.cmdloop()
     except KeyboardInterrupt:
         console.print("\nGoodbye!")
-        sys.exit(0)
+    finally:
+        # Close the connection on every exit route (exit/quit, Ctrl-D, Ctrl-C).
+        try:
+            shell.conn.close()
+        except Exception:
+            pass
