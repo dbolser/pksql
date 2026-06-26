@@ -8,6 +8,8 @@ result-producing query).
 """
 
 import base64
+import csv
+import io
 import json
 import time
 from datetime import date, datetime
@@ -57,9 +59,14 @@ def render_result(result, output_format):
         return str(result)
     if output_format in ("csv", "tsv"):
         delimiter = "," if output_format == "csv" else "\t"
-        lines = [delimiter.join(result.columns)]
-        lines.extend(delimiter.join(map(str, row)) for row in result.fetchall())
-        return "\n".join(lines)
+        # Use the stdlib csv writer so values containing the delimiter, quotes
+        # or newlines are quoted/escaped correctly, and SQL NULL becomes an
+        # empty field rather than the literal string "None".
+        buffer = io.StringIO()
+        writer = csv.writer(buffer, delimiter=delimiter, lineterminator="\n")
+        writer.writerow(result.columns)
+        writer.writerows(result.fetchall())
+        return buffer.getvalue().rstrip("\n")
     if output_format == "json":
         rows = [dict(zip(result.columns, row)) for row in result.fetchall()]
         return json.dumps(rows, default=json_serializer)
@@ -75,8 +82,10 @@ def execute_query(sql, conn=None, output_format="table"):
     ``time_str`` is the formatted elapsed execution time.
     """
     executor = conn if conn is not None else duckdb
-    start_time = time.time()
+    # perf_counter is monotonic, so NTP/DST wall-clock adjustments can't skew
+    # (or negate) the measured duration.
+    start_time = time.perf_counter()
     result = executor.sql(sql)
     output = render_result(result, output_format)
-    time_str = format_elapsed(time.time() - start_time)
+    time_str = format_elapsed(time.perf_counter() - start_time)
     return output, time_str

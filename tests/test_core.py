@@ -22,6 +22,17 @@ def test_execute_query_csv_and_tsv():
     assert "1\t2" in output_tsv
 
 
+def test_execute_query_csv_escapes_and_nulls():
+    # A value containing the delimiter must be quoted, and SQL NULL must render
+    # as an empty field (not the literal "None").
+    output, _ = execute_query("SELECT 'c,d' AS x, NULL AS y", output_format="csv")
+    assert output == 'x,y\n"c,d",'
+
+    # The tsv writer quotes values that contain a tab.
+    output_tsv, _ = execute_query("SELECT e'a\tb' AS x", output_format="tsv")
+    assert output_tsv == 'x\n"a\tb"'
+
+
 def test_execute_query_json_uses_serializer():
     # DATE values are not natively JSON-serializable; the custom serializer
     # should turn them into ISO strings rather than raising.
