@@ -1,36 +1,15 @@
 """CLI entry point for pksql."""
 
-import json
-import os
 import shlex
 import sys
-import time
-from datetime import date, datetime
-from datetime import time as time_type
-from decimal import Decimal
 
 import click
-import duckdb
 from rich.console import Console
+
+from pksql.core import execute_query
 
 console = Console()
 conserr = Console(stderr=True)
-
-
-def json_serializer(obj):
-    """Custom JSON serializer for non-serializable objects."""
-    if isinstance(obj, (datetime, date, time_type)):
-        return obj.isoformat()
-    elif isinstance(obj, Decimal):
-        return float(obj)
-    elif isinstance(obj, bytes):
-        # Convert binary data to base64 string
-        import base64
-
-        return base64.b64encode(obj).decode("utf-8")
-    else:
-        # Fallback for any other non-serializable types
-        return str(obj)
 
 
 @click.command(
@@ -106,50 +85,16 @@ def cli(args, interactive, output_format):
         full_query = " ".join(args)
 
         try:
-            # Start timing
-            start_time = time.time()
+            output, time_str = execute_query(full_query, output_format=output_format)
 
-            # Use duckdb.sql which provides nice formatting out of the box
-            result = duckdb.sql(full_query)
-
-            # Determine if this is a query that returns results by checking the result object
-            is_query = (
-                result is not None
-                and hasattr(result, "columns")
-                and bool(result.columns)
-            )
-
-            if output_format == "table":
-                if is_query:
-                    # Display results using DuckDB's pretty formatting
-                    print(result)
-            elif output_format in ("csv", "tsv"):
-                delimiter = "," if output_format == "csv" else "\t"
-                if is_query:
-                    header = delimiter.join(result.columns)
-                    print(header)
-                    for row in result.fetchall():
-                        print(delimiter.join(map(str, row)))
-                else:
-                    conserr.print("Query executed successfully.")
-            elif output_format == "json":
-                if is_query:
-                    rows = [dict(zip(result.columns, row)) for row in result.fetchall()]
-                    print(json.dumps(rows, default=json_serializer))
-                else:
-                    conserr.print("Query executed successfully.")
-
-            # End timing and display
-            end_time = time.time()
-            elapsed = end_time - start_time
-
-            # Format query time based on duration
-            if elapsed < 0.001:
-                time_str = f"{elapsed * 1000000:.2f} μs"
-            elif elapsed < 1:
-                time_str = f"{elapsed * 1000:.2f} ms"
-            else:
-                time_str = f"{elapsed:.3f} sec"
+            if output is not None:
+                # Result-producing query: results go to stdout.
+                print(output)
+            elif output_format != "table":
+                # Non-query statement: report success on stderr so structured
+                # output on stdout stays clean. (Table mode stays silent, as
+                # DuckDB has no table to render.)
+                conserr.print("Query executed successfully.")
 
             conserr.print(f"Query time: {time_str}")
 
