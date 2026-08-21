@@ -7,24 +7,21 @@ give a long path a short name once, in a `.pksql` file, instead of retyping it.
 
 ## Installation
 
-### For Users
-
-Install directly from GitHub:
-
 ```bash
-# Using pip
-pip install git+https://github.com/dbolser/pksql.git
-
-# Using pip with SSH (if you have SSH keys configured)
-pip install git+ssh://git@github.com/dbolser/pksql.git
+uv pip install pksql
+# or
+pip install pksql
 ```
 
-### For Developers
+Needs Python 3.10+. That is all — DuckDB, Click and Rich come with it.
+
+To work on pksql instead:
 
 ```bash
-pip install -e .
-# or
-uv pip install -e .
+git clone https://github.com/dbolser/pksql.git
+cd pksql
+uv sync
+uv run pytest
 ```
 
 ## Usage
@@ -109,11 +106,6 @@ pksql -F json "SELECT * FROM corpus" | jq .
 Results go to stdout; the query time and any errors go to stderr, so piping
 stays clean.
 
-## Requirements
-
-- Python 3.10+
-- DuckDB, Click, Rich
-
 ## Project History
 
 This project started with a simple idea:
@@ -126,9 +118,32 @@ aliases you set up there died with the session, so they were never worth
 registering. Persisting them to a `.pksql` file gave the one-shot CLI the same
 convenience, and the REPL was dropped.
 
+## Releasing
+
+Publishing is automatic. Cutting a GitHub release uploads to PyPI; there is no
+API token anywhere, because both indexes use trusted publishing (OIDC) — GitHub
+mints a short-lived token that the index exchanges for upload rights.
+
+1. Bump `version` in `pyproject.toml` and `__version__` in `pksql/__init__.py`.
+   They must match.
+2. Merge that to `main`.
+3. Optional rehearsal: run the **Publish** workflow manually from the Actions
+   tab. A manual run only ever reaches TestPyPI, never PyPI.
+4. `gh release create vX.Y.Z --target main --generate-notes`
+
+The release event builds with `uv build`, checks the metadata with
+`twine check`, and uploads. Watch it with `gh run watch`.
+
+A few things worth knowing:
+
+- A version number on PyPI is permanent. It can be yanked, never reused. Get the
+  bump right before you tag.
+- The workflow file is read from the tagged commit, so the tag has to include
+  any workflow change you are relying on.
+- Publisher registration lives on the index, not here: PyPI uses the `pypi`
+  environment, TestPyPI uses `testpypi`, both pinned to `publish.yml`.
+
 ## TODO
 
-- [ ] Publish to PyPI (TestPyPI is wired up via trusted publishing; real PyPI
-      needs its own publisher and the `repository-url` line dropped)
 - [ ] Add schema inspection commands
 - [ ] Support for saving query results to files
