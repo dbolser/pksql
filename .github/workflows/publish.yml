@@ -1,30 +1,44 @@
-name: Publish to TestPyPI
+name: Publish
 
 on:
   release:
     types: [created]
-  # Lets a publish be rehearsed against TestPyPI without cutting a release.
+  # Rehearsal only: a manual run goes to TestPyPI, never to PyPI.
   workflow_dispatch:
 
 jobs:
-  publish:
+  testpypi:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    # Must match the environment named on TestPyPI's trusted publisher.
     environment: testpypi
     permissions:
-      # Trusted publishing (OIDC): GitHub mints a short-lived token that
-      # TestPyPI exchanges for upload rights, so there is no API token to store.
       id-token: write
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
-      - name: Build sdist and wheel
-        run: uv build
-      - name: Check package metadata
-        run: uvx twine check dist/*
-      - name: Publish to TestPyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - run: uv build
+      - run: uvx twine check dist/*
+      - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+          # A rehearsal of an already-rehearsed version is a no-op, not a failure.
+          skip-existing: true
+
+  pypi:
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      # Trusted publishing (OIDC): GitHub mints a short-lived token that PyPI
+      # exchanges for upload rights, so there is no API token to store.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.0.1
+        with:
+          enable-cache: true
+      - run: uv build
+      - run: uvx twine check dist/*
+      - uses: pypa/gh-action-pypi-publish@release/v1
