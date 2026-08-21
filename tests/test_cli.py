@@ -94,12 +94,26 @@ def test_add_alias_warns_when_nothing_matches(workspace):
     assert "nothing matches" in result.stderr
 
 
-@pytest.mark.parametrize("name", ["drop table x", "1st", "select", "asof"])
-def test_add_alias_rejects_names_duckdb_cannot_use(workspace, name):
+@pytest.mark.parametrize("name", ["drop table x", "1st", "a-b"])
+def test_add_alias_rejects_a_name_that_is_not_an_identifier(workspace, name):
     result = CliRunner().invoke(cli, ["add-alias", name, "=", "y.parquet"])
     assert result.exit_code == 1
-    assert "will not accept" in result.stderr
+    assert "not a valid alias name" in result.stderr
     assert not (workspace / ".pksql").exists()
+
+
+@pytest.mark.parametrize("name", ["select", "asof"])
+def test_a_keyword_alias_works_when_the_query_quotes_it(workspace, name):
+    _parquet(workspace / "kw.parquet", "SELECT 5 AS v")
+    runner = CliRunner()
+
+    added = runner.invoke(cli, ["add-alias", name, "kw.parquet"])
+    assert added.exit_code == 0
+    assert "must quote it" in added.stderr
+
+    quoted = runner.invoke(cli, ["-F", "csv", f'SELECT * FROM "{name}"'])
+    assert quoted.exit_code == 0
+    assert quoted.stdout.strip() == "v\n5"
 
 
 def test_mutating_a_malformed_alias_file_is_refused(workspace):

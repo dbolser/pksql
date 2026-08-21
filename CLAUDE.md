@@ -32,11 +32,15 @@ Use uv to manage dependencies, e.g. `uv run pytest`.
    `NAME_RE` restricts them rather than trying to escape arbitrary text. Paths
    are single-quoted with `'` doubled.
 
-   `add-alias` additionally runs `is_usable_name`, which asks DuckDB by
-   attempting `CREATE VIEW <name> AS SELECT 1`. Do not swap this for a keyword
-   list: `keyword_category = 'reserved'` covers only 75 of the 105 words DuckDB
-   rejects unquoted — 30 `type_function` words (`anti`, `asof`, `at`, `by`, ...)
-   fail too, and the set moves between releases.
+   The view name is double-quoted at CREATE time, so a keyword alias such as
+   `select` still works — the query just has to quote it too. `add-alias` calls
+   `needs_quoting` to say so, because the bare `Parser Error: syntax error at
+   or near "select"` never mentions the alias.
+
+   `needs_quoting` asks DuckDB by attempting `CREATE VIEW <name> AS SELECT 1`.
+   Do not swap it for a keyword list: `keyword_category = 'reserved'` covers
+   only 75 of the 110 words needing quotes — 30 `type_function` words (`anti`,
+   `asof`, `at`, `by`, ...) need them too, and the set moves between releases.
 
 5. **Mutations parse before they write**: `update_file` reads the whole file
    first, so `add-alias` cannot report success on a file that every later

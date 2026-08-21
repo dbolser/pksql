@@ -145,8 +145,8 @@ def add_alias(words, use_global):
         pksql add-alias hits 'results/*.parquet'
     """
     name, path = _split_assignment(words)
-    if not alias_store.is_usable_name(name):
-        conserr.print(f"Error: DuckDB will not accept {name!r} as a table name.")
+    if not alias_store.NAME_RE.match(name):
+        conserr.print(f"Error: {name!r} is not a valid alias name.")
         sys.exit(1)
     if not path:
         conserr.print(f"Error: no path given for alias {name!r}.")
@@ -159,6 +159,12 @@ def add_alias(words, use_global):
         console.print(f"{name} = {path} [dim](was {previous})[/dim]")
     else:
         console.print(f"{name} = {path}")
+    if alias_store.needs_quoting(name):
+        # The bare SQL parser error would not mention the alias, so say it here.
+        conserr.print(
+            f"Note: {name} is a DuckDB keyword, so queries must quote it: "
+            f'SELECT * FROM "{name}"'
+        )
     if alias_store.missing(alias_store.resolve(path, target.parent)):
         conserr.print(
             f"Warning: nothing matches {path} yet "
