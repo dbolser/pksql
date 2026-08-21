@@ -1,5 +1,6 @@
 """CLI entry point for pksql."""
 
+import contextlib
 import sys
 
 import click
@@ -12,6 +13,16 @@ from pksql.core import execute_query
 # Long file paths read better unbroken than wrapped mid-token.
 console = Console(soft_wrap=True)
 conserr = Console(stderr=True, soft_wrap=True)
+
+
+@contextlib.contextmanager
+def reporting_alias_errors():
+    """Report a malformed ``.pksql`` as an error rather than a traceback."""
+    try:
+        yield
+    except alias_store.AliasError as e:
+        conserr.print(f"Error: {e}")
+        sys.exit(1)
 
 
 class QueryGroup(click.Group):
@@ -70,11 +81,8 @@ def cli(ctx):
 )
 def query(sql, output_format):
     """Run a SQL query (assumed when no subcommand is given)."""
-    try:
+    with reporting_alias_errors():
         registered = alias_store.load()
-    except alias_store.AliasError as e:
-        conserr.print(f"Error: {e}")
-        sys.exit(1)
 
     conn = duckdb.connect(database=":memory:")
     try:
@@ -137,15 +145,16 @@ def add_alias(words, use_global):
         pksql add-alias hits 'results/*.parquet'
     """
     name, path = _split_assignment(words)
-    if not alias_store.NAME_RE.match(name):
-        conserr.print(f"Error: {name!r} is not a valid alias name.")
+    if not alias_store.is_usable_name(name):
+        conserr.print(f"Error: DuckDB will not accept {name!r} as a table name.")
         sys.exit(1)
     if not path:
         conserr.print(f"Error: no path given for alias {name!r}.")
         sys.exit(1)
 
     target = _target_file(use_global)
-    previous = alias_store.update_file(target, name, path)
+    with reporting_alias_errors():
+        previous = alias_store.update_file(target, name, path)
     if previous is not None and previous != path:
         console.print(f"{name} = {path} [dim](was {previous})[/dim]")
     else:
@@ -169,7 +178,9 @@ def add_alias(words, use_global):
 def rm_alias(name, use_global):
     """Remove an alias."""
     target = _target_file(use_global)
-    if alias_store.update_file(target, name, None) is None:
+    with reporting_alias_errors():
+        removed = alias_store.update_file(target, name, None)
+    if removed is None:
         conserr.print(f"Error: alias {name!r} is not in {target}.")
         sys.exit(1)
     console.print(f"Removed {name}.")
@@ -178,14 +189,11 @@ def rm_alias(name, use_global):
 @cli.command("aliases")
 def list_aliases():
     """List the aliases available here, and where they come from."""
-    try:
+    with reporting_alias_errors():
         sources = [
             (source, alias_store.read_file(source))
             for source in alias_store.source_files()
         ]
-    except alias_store.AliasError as e:
-        conserr.print(f"Error: {e}")
-        sys.exit(1)
 
     if not any(entries for _, entries in sources):
         console.print("No aliases registered. Try: pksql add-alias name = path")

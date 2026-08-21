@@ -90,6 +90,27 @@ def parse(text, source=ALIAS_FILE):
     return aliases
 
 
+def is_usable_name(name):
+    """Whether DuckDB will accept ``name`` as an unquoted view name.
+
+    Asking DuckDB beats keeping a keyword list: the reserved words are only
+    part of it (``anti``, ``asof`` and friends are rejected too), and the set
+    moves between releases.  The probe never touches the alias path, so it
+    separates "bad name" from "bad file".
+    """
+    if not NAME_RE.match(name):
+        return False
+    probe = duckdb.connect(database=":memory:")
+    try:
+        probe.sql(f"CREATE VIEW {name} AS SELECT 1")
+    except duckdb.Error:
+        return False
+    else:
+        return True
+    finally:
+        probe.close()
+
+
 def read_file(path):
     """Parse a single alias file, treating a missing file as empty."""
     path = Path(path)
@@ -126,6 +147,9 @@ def update_file(path, name, new_path):
     not previously set.
     """
     path = Path(path)
+    # Parse before writing: copying a line we cannot read back would let the
+    # mutation report success while every later command fails on the same file.
+    read_file(path)
     try:
         lines = path.read_text().splitlines()
     except FileNotFoundError:

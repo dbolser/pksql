@@ -32,7 +32,17 @@ Use uv to manage dependencies, e.g. `uv run pytest`.
    `NAME_RE` restricts them rather than trying to escape arbitrary text. Paths
    are single-quoted with `'` doubled.
 
-5. **Streams**: results on stdout, timing and errors on stderr, so `-F json |
+   `add-alias` additionally runs `is_usable_name`, which asks DuckDB by
+   attempting `CREATE VIEW <name> AS SELECT 1`. Do not swap this for a keyword
+   list: `keyword_category = 'reserved'` covers only 75 of the 105 words DuckDB
+   rejects unquoted — 30 `type_function` words (`anti`, `asof`, `at`, `by`, ...)
+   fail too, and the set moves between releases.
+
+5. **Mutations parse before they write**: `update_file` reads the whole file
+   first, so `add-alias` cannot report success on a file that every later
+   command will choke on.
+
+6. **Streams**: results on stdout, timing and errors on stderr, so `-F json |
    jq` stays clean.
 
 ## Entry Point Configuration

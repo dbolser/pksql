@@ -106,6 +106,33 @@ def test_create_views_quotes_paths_containing_quotes(workspace):
     conn.close()
 
 
+@pytest.mark.parametrize("name", ["corpus", "hits2", "_x", "filter", "database"])
+def test_is_usable_name_accepts_ordinary_identifiers(name):
+    assert aliases.is_usable_name(name)
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "select",  # reserved
+        "asof",  # type_function, which DuckDB also rejects unquoted
+        "1st",  # not an identifier at all
+        "drop table x",
+        "",
+    ],
+)
+def test_is_usable_name_rejects_what_duckdb_cannot_use(name):
+    assert not aliases.is_usable_name(name)
+
+
+def test_update_file_refuses_a_malformed_file(workspace):
+    path = workspace / ".pksql"
+    path.write_text("this is junk\n")
+    with pytest.raises(aliases.AliasError):
+        aliases.update_file(path, "corpus", "corpus.duckdb")
+    assert path.read_text() == "this is junk\n"
+
+
 def test_missing_only_checks_local_paths(workspace):
     (workspace / "there.parquet").touch()
     assert not aliases.missing(str(workspace / "there.parquet"))

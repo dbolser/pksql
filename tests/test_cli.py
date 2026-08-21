@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import duckdb
+import pytest
 from click.testing import CliRunner
 
 from pksql import aliases
@@ -93,11 +94,33 @@ def test_add_alias_warns_when_nothing_matches(workspace):
     assert "nothing matches" in result.stderr
 
 
-def test_add_alias_rejects_a_name_that_is_not_an_identifier(workspace):
-    result = CliRunner().invoke(cli, ["add-alias", "drop table x", "=", "y.parquet"])
+@pytest.mark.parametrize("name", ["drop table x", "1st", "select", "asof"])
+def test_add_alias_rejects_names_duckdb_cannot_use(workspace, name):
+    result = CliRunner().invoke(cli, ["add-alias", name, "=", "y.parquet"])
     assert result.exit_code == 1
-    assert "not a valid alias name" in result.stderr
+    assert "will not accept" in result.stderr
     assert not (workspace / ".pksql").exists()
+
+
+def test_mutating_a_malformed_alias_file_is_refused(workspace):
+    path = workspace / ".pksql"
+    path.write_text("this is junk\n")
+    runner = CliRunner()
+
+    for args in (["add-alias", "good", "good.parquet"], ["rm-alias", "good"]):
+        result = runner.invoke(cli, args)
+        assert result.exit_code == 1
+        assert "expected 'name = path'" in result.stderr
+    # Refused, not half-applied.
+    assert path.read_text() == "this is junk\n"
+
+
+def test_mutating_past_a_malformed_entry_reports_rather_than_crashes(workspace):
+    (workspace / ".pksql").write_text("corpus =\n")
+    result = CliRunner().invoke(cli, ["rm-alias", "corpus"])
+    assert result.exit_code == 1
+    assert "has no path" in result.stderr
+    assert result.exception is None or isinstance(result.exception, SystemExit)
 
 
 def test_global_alias_is_visible_from_any_directory(workspace):

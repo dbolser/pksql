@@ -36,11 +36,20 @@ pksql "SELECT * FROM 'data.parquet'"
 # Query many at once
 pksql "SELECT COUNT(*) FROM 'multiple_*.parquet'"
 
-# DuckDB databases and CSVs work the same way
-pksql "SELECT * FROM 'corpus.duckdb'"
+# CSVs work the same way
+pksql "SELECT * FROM 'data.csv'"
 ```
 
 Quote the query. Otherwise your shell expands `*` before pksql sees it.
+
+A `.duckdb` file can be read the same way, but only if it holds exactly one
+table — otherwise DuckDB says `Database "corpus.duckdb" has multiple tables`.
+For those, attach it and name the table:
+
+```bash
+pksql "SELECT * FROM 'corpus.duckdb'"
+pksql "ATTACH 'corpus.duckdb' AS c; SELECT * FROM c.documents"
+```
 
 ### Aliases
 
@@ -72,7 +81,7 @@ pksql rm-alias corpus
 
 It is a plain list of `name = path` lines, so you can edit it by hand:
 
-```
+```text
 # Karl's backup, 2026-07-31
 corpus = data/s3-backup-20260731/karl/corpus.duckdb
 hits   = 'results/*.parquet'
@@ -83,6 +92,8 @@ hits   = 'results/*.parquet'
 - An alias pointing at something that isn't there is ignored, so an unplugged
   drive breaks only the queries that actually name it. `pksql aliases` marks
   those `(missing)`.
+- Alias names have to be usable as DuckDB table names, so `select` and `asof`
+  are refused at `add-alias` time rather than failing later.
 
 ### Output formats
 
