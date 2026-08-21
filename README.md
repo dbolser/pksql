@@ -1,9 +1,9 @@
 # pksql
 
-Command line SQL on parquet files using DuckDB
+Command line SQL on parquet files using DuckDB.
 
-pksql is a command-line SQL tool for querying Parquet files using DuckDB. It supports both direct query mode and an interactive shell with file aliasing capabilities.
-
+pksql runs a DuckDB query from your shell and prints the result. Aliases let you
+give a long path a short name once, in a `.pksql` file, instead of retyping it.
 
 ## Installation
 
@@ -21,154 +21,99 @@ pip install git+ssh://git@github.com/dbolser/pksql.git
 
 ### For Developers
 
-#### Using pip
-
 ```bash
 pip install -e .
-```
-
-#### Using uv
-
-If you prefer using uv:
-
-```bash
+# or
 uv pip install -e .
 ```
 
 ## Usage
 
-pksql can be used in two ways: direct query mode and interactive mode.
+```bash
+# Query a single file
+pksql "SELECT * FROM 'data.parquet'"
 
-### Direct Query Mode
+# Query many at once
+pksql "SELECT COUNT(*) FROM 'multiple_*.parquet'"
 
-Run SQL queries directly on Parquet files using DuckDB:
+# DuckDB databases and CSVs work the same way
+pksql "SELECT * FROM 'corpus.duckdb'"
+```
+
+Quote the query. Otherwise your shell expands `*` before pksql sees it.
+
+### Aliases
+
+Give a path a name, and use that name as a table:
 
 ```bash
-# Query a single Parquet file
-pksql SELECT * FROM 'data.parquet'
-
-# Count rows in multiple Parquet files
-pksql SELECT COUNT(*) FROM 'multiple_*.parquet'
-
-# Perform aggregations
-pksql SELECT col1, COUNT(*) FROM 'some.parquet' GROUP BY col1
+pksql add-alias corpus = data/s3-backup-20260731/karl/corpus.duckdb
+pksql "SELECT * FROM corpus"
 ```
 
-### Interactive Mode
-
-Interactive mode provides a shell-like environment where you can run SQL queries without having to quote file paths and escape special characters. This is especially useful for running multiple queries on the same files.
-
-#### Starting Interactive Mode
+`add-alias` writes to `.pksql` in the current directory. The `=` is optional, so
+`pksql add-alias corpus data/corpus.duckdb` does the same thing.
 
 ```bash
-# Start the interactive shell
-pksql -i
+# A glob works too - quote it so the shell leaves it alone
+pksql add-alias hits 'results/*.parquet'
 
-# Start with pre-registered file aliases
-pksql -i data.parquet as mydata
-pksql -i file1.parquet as data1 file2.parquet as data2
+# Available everywhere, not just this directory
+pksql add-alias --global scratch ~/scratch.duckdb
 
-# Using glob patterns
-pksql -i "/path/to/*.parquet" as alldata
+# What's registered, and where from
+pksql aliases
+
+# Forget one
+pksql rm-alias corpus
 ```
 
-#### Interactive Commands
+### The .pksql file
 
-Once in the interactive shell, you can use the following commands:
+It is a plain list of `name = path` lines, so you can edit it by hand:
 
 ```
-# Register a file alias
-pksql> alias mydata /path/to/data.parquet
-
-# Register a glob pattern as an alias
-pksql> alias alldata '/path/to/*.parquet'
-
-# View files that match a glob pattern
-pksql> glob /path/to/*.parquet
-
-# List all registered aliases
-pksql> aliases
-
-# Remove an alias
-pksql> unalias mydata
-
-# Run SQL queries on aliases
-pksql> SELECT * FROM mydata
-pksql> SELECT COUNT(*) FROM mydata
-
-# Direct queries on files (including glob patterns)
-pksql> SELECT * FROM '/path/to/data.parquet'
-pksql> SELECT COUNT(*) FROM '/path/to/*.parquet'
-
-# Exit the interactive shell
-pksql> exit
-pksql> quit
+# Karl's backup, 2026-07-31
+corpus = data/s3-backup-20260731/karl/corpus.duckdb
+hits   = 'results/*.parquet'
 ```
 
-#### Working with Glob Patterns
+- `~/.pksql` applies everywhere; `./.pksql` adds to it and wins on a name clash.
+- Relative paths are read relative to the `.pksql` file, not to where you are.
+- An alias pointing at something that isn't there is ignored, so an unplugged
+  drive breaks only the queries that actually name it. `pksql aliases` marks
+  those `(missing)`.
 
-Glob patterns allow you to query multiple files at once:
+### Output formats
 
-1. When using glob patterns in the interactive shell:
-   ```
-   # Register a glob pattern
-   pksql> alias mydata '/path/to/*.parquet'
-   
-   # Or query directly
-   pksql> SELECT * FROM '/path/to/*.parquet'
-   ```
+`--output-format` (`-F`) takes `table` (default), `csv`, `tsv` or `json`:
 
-2. When using glob patterns on the command line:
-   ```bash
-   # Use quotes to prevent shell expansion
-   pksql -i "/path/to/*.parquet" as mydata
-   ```
+```bash
+pksql -F json "SELECT * FROM corpus" | jq .
+```
 
-### Important Notes
-
-- In direct query mode, enclose file paths in single quotes to prevent shell glob expansion
-- In interactive mode, file paths can be used without quotes when registering aliases
-- Use the alias feature to simplify queries and avoid shell parsing issues
-- You can use standard SQL syntax supported by DuckDB
-- The output uses DuckDB's built-in formatting for readability
-- Use `--output-format csv`, `--output-format tsv`, or `--output-format json` for machine readable output
-- Query execution time is displayed after each query
+Results go to stdout; the query time and any errors go to stderr, so piping
+stays clean.
 
 ## Requirements
 
-- Python 3.8+
-- DuckDB
-- Click
-- Rich (for interactive shell formatting)
+- Python 3.10+
+- DuckDB, Click, Rich
 
 ## Project History
 
 This project started with a simple idea:
 
-> I want a simple 'command line' utility that lets me run DuckDB SQL on a given set of parquet files.
+> I want a simple 'command line' utility that lets me run DuckDB SQL on a given
+> set of parquet files.
 
-The implementation uses Click for the CLI interface and DuckDB for querying Parquet files directly. The interactive mode was added to make it easier to run queries without having to worry about shell escaping and quoting.
+It briefly grew an interactive REPL. That turned out to be the wrong shape — the
+aliases you set up there died with the session, so they were never worth
+registering. Persisting them to a `.pksql` file gave the one-shot CLI the same
+convenience, and the REPL was dropped.
 
 ## TODO
 
-● Completed
-  ⎿  ☒ Add DuckDB and click dependencies
-     ☒ Set up project structure for CLI tool
-     ☒ Implement CLI interface with query handling
-     ☒ Format and display query results
-     ☒ Add installation instructions to README
-     ☒ Implement interactive mode
-     ☒ Add support for file aliases
-     ☒ Update README with interactive mode documentation
-     ☒ Add user installation instructions to README
-     ☒ Set up GitHub Actions CI pipeline
-     ☒ Configure package for PyPI publishing
-     ☒ Add deployment workflow to publish to PyPI
-
-● Next Steps
-  ⎿  ☐ Add unit tests for core functionality
-     ☐ Publish to PyPI (after creating PyPI account and API token)
-     ☒ Add more output format options (CSV, JSON, etc.)
-     ☐ Add schema inspection commands
-     ☐ Support for saving query results to files
-
+- [ ] Publish to PyPI (after creating PyPI account and API token)
+- [ ] Add schema inspection commands
+- [ ] Support for saving query results to files

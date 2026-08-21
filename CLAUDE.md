@@ -2,40 +2,64 @@
 
 Use uv to manage dependencies, e.g. `uv run pytest`.
 
+## Layout
 
+- `pksql/main.py` — the Click CLI. A `QueryGroup` dispatches an unrecognised
+  first argument to the `query` subcommand, so `pksql "SELECT 1"` and
+  `pksql add-alias ...` can share one entry point.
+- `pksql/aliases.py` — reading, writing and binding `.pksql` alias files.
+- `pksql/core.py` — running a statement, rendering it for an output format and
+  timing it. Kept apart from the CLI so "did this produce a result set?" is
+  decided in one place.
 
-### Key Design Patterns
+## Key Design Patterns
 
-1. **Dual Mode Operation**: The tool operates in two distinct modes:
-   - Direct query mode: Execute single SQL queries from command line
-   - Interactive mode: REPL shell with persistent state and file aliases
+1. **One-shot only**: every invocation runs a single query and exits. There is
+   no REPL — an earlier interactive shell was removed because aliases
+   registered in it died with the session.
 
-2. **File Aliasing System**: Interactive mode creates DuckDB views for registered file aliases, allowing users to reference complex file paths or glob patterns with simple names.
+2. **Alias files**: `~/.pksql` then `./.pksql`, both `name = path` lines, local
+   winning on a name clash. Relative paths resolve against the directory of the
+   file that declared them, so a `.pksql` survives being moved with its project.
 
-3. **Glob Pattern Handling**: Both modes support glob patterns for querying multiple Parquet files simultaneously. Interactive mode provides `glob` command to preview matching files.
+3. **Aliases become views**: each alias is a `CREATE OR REPLACE VIEW <name> AS
+   SELECT * FROM '<path>'` on a fresh in-memory connection. DuckDB binds the
+   path at CREATE time, so `create_views` swallows failures — otherwise one
+   stale entry would break every query. A dead alias then surfaces only when a
+   query names it, as DuckDB's own "does not exist" error.
 
-4. **Rich Output**: Uses Rich library for formatted console output and timing information.
+4. **Alias names are identifiers**: they are interpolated straight into SQL, so
+   `NAME_RE` restricts them rather than trying to escape arbitrary text. Paths
+   are single-quoted with `'` doubled.
 
-### Entry Point Configuration
+5. **Streams**: results on stdout, timing and errors on stderr, so `-F json |
+   jq` stays clean.
 
-The CLI entry point is configured in pyproject.toml as:
+## Entry Point Configuration
+
 ```toml
 [project.scripts]
 pksql = "pksql.main:cli"
 ```
 
-### Dependencies
+## Dependencies
 
-- **duckdb**: Core SQL engine for Parquet file queries
-- **click**: Command-line interface framework
-- **rich**: Terminal formatting and output enhancement
+- **duckdb**: SQL engine
+- **click**: CLI framework
+- **rich**: terminal formatting
 
-## Interactive Shell Commands
+## CLI Surface
 
-- `alias <name> <path>`: Register file or glob pattern with alias
-- `aliases`: List all registered aliases  
-- `unalias <name>`: Remove alias
-- `glob <pattern>`: Preview files matching glob pattern
-- `exit`/`quit`: Exit shell
+- `pksql "<sql>"` — run a query (`-F table|csv|tsv|json`)
+- `pksql add-alias <name> [=] <path>` — register an alias (`-g` for `~/.pksql`)
+- `pksql aliases` — list aliases and their source files
+- `pksql rm-alias <name>` — remove an alias (`-g` for `~/.pksql`)
 
-SQL queries are executed directly in the shell prompt without special commands.
+## Testing
+
+`tests/conftest.py` provides a `workspace` fixture giving each test an empty
+working directory and its own `$HOME`. Any test that touches alias lookup must
+use it, or it will read the developer's real `~/.pksql`.
+
+Note that Click 8.2's `result.output` is the *combined* stream; assert against
+`result.stdout` / `result.stderr` when the distinction matters.

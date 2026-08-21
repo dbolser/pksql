@@ -1,10 +1,9 @@
 """Shared query-execution helpers for pksql.
 
-Both the direct-query CLI (``pksql.main``) and the interactive shell
-(``pksql.interactive``) need to run a SQL statement, render the result for a
-given output format and report how long it took.  Keeping that logic here
-avoids duplicating it (and lets both entry points agree on what counts as a
-result-producing query).
+Running a statement, rendering the result for a given output format and
+reporting how long it took are kept here, apart from the CLI plumbing in
+``pksql.main``, so that what counts as a result-producing query is decided in
+one place.
 """
 
 import base64
