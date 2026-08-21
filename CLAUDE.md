@@ -32,17 +32,27 @@ Use uv to manage dependencies, e.g. `uv run pytest`.
    `NAME_RE` restricts them rather than trying to escape arbitrary text. Paths
    are single-quoted with `'` doubled.
 
-   `add-alias` additionally runs `is_usable_name`, which asks DuckDB by
-   attempting `CREATE VIEW <name> AS SELECT 1`. Do not swap this for a keyword
-   list: `keyword_category = 'reserved'` covers only 75 of the 105 words DuckDB
-   rejects unquoted — 30 `type_function` words (`anti`, `asof`, `at`, `by`, ...)
-   fail too, and the set moves between releases.
+   The view name is double-quoted at CREATE time, so a keyword alias such as
+   `select` still works — the query just has to quote it too. `add-alias` calls
+   `needs_quoting` to say so, because the bare `Parser Error: syntax error at
+   or near "select"` never mentions the alias.
+
+   `needs_quoting` asks DuckDB by attempting `CREATE VIEW <name> AS SELECT 1`.
+   Do not swap it for a keyword list: `keyword_category = 'reserved'` covers
+   only 75 of the 110 words needing quotes — 30 `type_function` words (`anti`,
+   `asof`, `at`, `by`, ...) need them too, and the set moves between releases.
 
 5. **Mutations parse before they write**: `update_file` reads the whole file
    first, so `add-alias` cannot report success on a file that every later
    command will choke on.
 
-6. **Streams**: results on stdout, timing and errors on stderr, so `-F json |
+6. **Unquoted globs**: the shell expands them before `add-alias` sees them, so
+   several filenames arrive joined by spaces. `_shell_expanded_files` spots that
+   (every part must exist, which excludes an ordinary path containing spaces)
+   and names the fix. A glob matching exactly one file is indistinguishable from
+   that filename typed deliberately, so it cannot be caught.
+
+7. **Streams**: results on stdout, timing and errors on stderr, so `-F json |
    jq` stays clean.
 
 ## Entry Point Configuration

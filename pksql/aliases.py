@@ -90,23 +90,21 @@ def parse(text, source=ALIAS_FILE):
     return aliases
 
 
-def is_usable_name(name):
-    """Whether DuckDB will accept ``name`` as an unquoted view name.
+def needs_quoting(name):
+    """Whether querying ``name`` requires double-quoting it.
 
     Asking DuckDB beats keeping a keyword list: the reserved words are only
-    part of it (``anti``, ``asof`` and friends are rejected too), and the set
+    part of it (``anti``, ``asof`` and friends need quoting too) and the set
     moves between releases.  The probe never touches the alias path, so it
-    separates "bad name" from "bad file".
+    says nothing about whether the file is readable.
     """
-    if not NAME_RE.match(name):
-        return False
     probe = duckdb.connect(database=":memory:")
     try:
         probe.sql(f"CREATE VIEW {name} AS SELECT 1")
     except duckdb.Error:
-        return False
-    else:
         return True
+    else:
+        return False
     finally:
         probe.close()
 
@@ -186,13 +184,15 @@ def create_views(conn, aliases):
     DuckDB resolves the path at ``CREATE VIEW`` time, so one stale entry would
     otherwise break every query.  Skipping means a dead alias only surfaces
     when a query actually names it, as DuckDB's own "does not exist" error.
-    Returns the names that failed.
+    The view name is double-quoted so that a keyword alias still works; the
+    query then has to quote it too.  ``NAME_RE`` has already ruled out a ``"``
+    in the name.  Returns the names that failed.
     """
     failed = []
     for name, path in aliases.items():
         quoted = path.replace("'", "''")
         try:
-            conn.sql(f"CREATE OR REPLACE VIEW {name} AS SELECT * FROM '{quoted}'")
+            conn.sql(f"CREATE OR REPLACE VIEW \"{name}\" AS SELECT * FROM '{quoted}'")
         except duckdb.Error:
             failed.append(name)
     return failed

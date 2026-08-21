@@ -107,8 +107,8 @@ def test_create_views_quotes_paths_containing_quotes(workspace):
 
 
 @pytest.mark.parametrize("name", ["corpus", "hits2", "_x", "filter", "database"])
-def test_is_usable_name_accepts_ordinary_identifiers(name):
-    assert aliases.is_usable_name(name)
+def test_ordinary_identifiers_need_no_quoting(name):
+    assert not aliases.needs_quoting(name)
 
 
 @pytest.mark.parametrize(
@@ -116,13 +116,19 @@ def test_is_usable_name_accepts_ordinary_identifiers(name):
     [
         "select",  # reserved
         "asof",  # type_function, which DuckDB also rejects unquoted
-        "1st",  # not an identifier at all
-        "drop table x",
-        "",
     ],
 )
-def test_is_usable_name_rejects_what_duckdb_cannot_use(name):
-    assert not aliases.is_usable_name(name)
+def test_keywords_need_quoting(name):
+    assert aliases.needs_quoting(name)
+
+
+def test_create_views_quotes_keyword_names(workspace):
+    duckdb.sql(f"COPY (SELECT 1 AS a) TO '{workspace / 'kw.parquet'}'")
+    conn = duckdb.connect(database=":memory:")
+
+    assert aliases.create_views(conn, {"select": str(workspace / "kw.parquet")}) == []
+    assert conn.sql('SELECT * FROM "select"').fetchall() == [(1,)]
+    conn.close()
 
 
 def test_update_file_refuses_a_malformed_file(workspace):

@@ -67,6 +67,9 @@ pksql "SELECT * FROM corpus"
 # A glob works too - quote it so the shell leaves it alone
 pksql add-alias hits 'results/*.parquet'
 
+# Forget the quotes and your shell expands it first; pksql says so
+#   Warning: that is 3 files, not one path - your shell expanded the glob.
+
 # Available everywhere, not just this directory
 pksql add-alias --global scratch ~/scratch.duckdb
 
@@ -92,8 +95,8 @@ hits   = 'results/*.parquet'
 - An alias pointing at something that isn't there is ignored, so an unplugged
   drive breaks only the queries that actually name it. `pksql aliases` marks
   those `(missing)`.
-- Alias names have to be usable as DuckDB table names, so `select` and `asof`
-  are refused at `add-alias` time rather than failing later.
+- An alias named after a DuckDB keyword works, but the query has to quote it:
+  `pksql 'SELECT * FROM "select"'`. `add-alias` says so when you register one.
 
 ### Output formats
 

@@ -1,6 +1,7 @@
 """CLI entry point for pksql."""
 
 import contextlib
+import os
 import sys
 
 import click
@@ -124,6 +125,20 @@ def _split_assignment(words):
     return name.strip(), " ".join(part for part in [path, *rest] if part).strip()
 
 
+def _shell_expanded_files(path):
+    """The filenames in ``path``, if it is really several the shell glued together.
+
+    An unquoted glob never reaches us as a glob: the shell has already replaced
+    it with the files it matched, so what arrives looks like one long path.
+    Every part has to exist before we say so, which keeps an ordinary path
+    containing spaces out of it.
+    """
+    parts = path.split(" ")
+    if len(parts) > 1 and all(os.path.exists(part) for part in parts):
+        return parts
+    return []
+
+
 def _target_file(use_global):
     return alias_store.global_file() if use_global else alias_store.local_file()
 
@@ -145,8 +160,8 @@ def add_alias(words, use_global):
         pksql add-alias hits 'results/*.parquet'
     """
     name, path = _split_assignment(words)
-    if not alias_store.is_usable_name(name):
-        conserr.print(f"Error: DuckDB will not accept {name!r} as a table name.")
+    if not alias_store.NAME_RE.match(name):
+        conserr.print(f"Error: {name!r} is not a valid alias name.")
         sys.exit(1)
     if not path:
         conserr.print(f"Error: no path given for alias {name!r}.")
@@ -159,11 +174,21 @@ def add_alias(words, use_global):
         console.print(f"{name} = {path} [dim](was {previous})[/dim]")
     else:
         console.print(f"{name} = {path}")
-    if alias_store.missing(alias_store.resolve(path, target.parent)):
+    if alias_store.needs_quoting(name):
+        # The bare SQL parser error would not mention the alias, so say it here.
         conserr.print(
-            f"Warning: nothing matches {path} yet "
-            "(quote globs so the shell cannot expand them)."
+            f"Note: {name} is a DuckDB keyword, so queries must quote it: "
+            f'SELECT * FROM "{name}"'
         )
+    expanded = _shell_expanded_files(path)
+    if expanded:
+        conserr.print(
+            f"Warning: that is {len(expanded)} files, not one path — your shell "
+            f"expanded the glob. Quote it:\n"
+            f"    pksql add-alias {name} 'some/*.parquet'"
+        )
+    elif alias_store.missing(alias_store.resolve(path, target.parent)):
+        conserr.print(f"Warning: nothing matches {path} yet.")
 
 
 @cli.command("rm-alias")

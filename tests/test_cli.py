@@ -88,18 +88,52 @@ def test_add_alias_accepts_all_assignment_spellings(workspace):
     }
 
 
+def test_add_alias_warns_when_the_shell_expanded_a_glob(workspace):
+    for i in range(3):
+        _parquet(workspace / f"part{i}.parquet")
+    # What the shell hands over for an unquoted `part*.parquet`.
+    result = CliRunner().invoke(
+        cli, ["add-alias", "embed", "part0.parquet", "part1.parquet", "part2.parquet"]
+    )
+    assert result.exit_code == 0
+    assert "that is 3 files, not one path" in result.stderr
+    assert "add-alias embed" in result.stderr
+
+
+def test_add_alias_does_not_mistake_a_path_with_spaces_for_a_glob(workspace):
+    _parquet(workspace / "with space.parquet")
+    result = CliRunner().invoke(cli, ["add-alias", "spaced", "with space.parquet"])
+    assert result.exit_code == 0
+    assert result.stderr == ""
+    assert (workspace / ".pksql").read_text() == "spaced = with space.parquet\n"
+
+
 def test_add_alias_warns_when_nothing_matches(workspace):
     result = CliRunner().invoke(cli, ["add-alias", "gone", "/nowhere/gone.parquet"])
     assert result.exit_code == 0
     assert "nothing matches" in result.stderr
 
 
-@pytest.mark.parametrize("name", ["drop table x", "1st", "select", "asof"])
-def test_add_alias_rejects_names_duckdb_cannot_use(workspace, name):
+@pytest.mark.parametrize("name", ["drop table x", "1st", "a-b"])
+def test_add_alias_rejects_a_name_that_is_not_an_identifier(workspace, name):
     result = CliRunner().invoke(cli, ["add-alias", name, "=", "y.parquet"])
     assert result.exit_code == 1
-    assert "will not accept" in result.stderr
+    assert "not a valid alias name" in result.stderr
     assert not (workspace / ".pksql").exists()
+
+
+@pytest.mark.parametrize("name", ["select", "asof"])
+def test_a_keyword_alias_works_when_the_query_quotes_it(workspace, name):
+    _parquet(workspace / "kw.parquet", "SELECT 5 AS v")
+    runner = CliRunner()
+
+    added = runner.invoke(cli, ["add-alias", name, "kw.parquet"])
+    assert added.exit_code == 0
+    assert "must quote it" in added.stderr
+
+    quoted = runner.invoke(cli, ["-F", "csv", f'SELECT * FROM "{name}"'])
+    assert quoted.exit_code == 0
+    assert quoted.stdout.strip() == "v\n5"
 
 
 def test_mutating_a_malformed_alias_file_is_refused(workspace):
