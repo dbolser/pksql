@@ -1,6 +1,7 @@
 """CLI entry point for pksql."""
 
 import contextlib
+import os
 import sys
 
 import click
@@ -124,6 +125,20 @@ def _split_assignment(words):
     return name.strip(), " ".join(part for part in [path, *rest] if part).strip()
 
 
+def _shell_expanded_files(path):
+    """The filenames in ``path``, if it is really several the shell glued together.
+
+    An unquoted glob never reaches us as a glob: the shell has already replaced
+    it with the files it matched, so what arrives looks like one long path.
+    Every part has to exist before we say so, which keeps an ordinary path
+    containing spaces out of it.
+    """
+    parts = path.split(" ")
+    if len(parts) > 1 and all(os.path.exists(part) for part in parts):
+        return parts
+    return []
+
+
 def _target_file(use_global):
     return alias_store.global_file() if use_global else alias_store.local_file()
 
@@ -165,11 +180,15 @@ def add_alias(words, use_global):
             f"Note: {name} is a DuckDB keyword, so queries must quote it: "
             f'SELECT * FROM "{name}"'
         )
-    if alias_store.missing(alias_store.resolve(path, target.parent)):
+    expanded = _shell_expanded_files(path)
+    if expanded:
         conserr.print(
-            f"Warning: nothing matches {path} yet "
-            "(quote globs so the shell cannot expand them)."
+            f"Warning: that is {len(expanded)} files, not one path — your shell "
+            f"expanded the glob. Quote it:\n"
+            f"    pksql add-alias {name} 'some/*.parquet'"
         )
+    elif alias_store.missing(alias_store.resolve(path, target.parent)):
+        conserr.print(f"Warning: nothing matches {path} yet.")
 
 
 @cli.command("rm-alias")

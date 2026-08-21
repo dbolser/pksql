@@ -67,6 +67,9 @@ pksql "SELECT * FROM corpus"
 # A glob works too - quote it so the shell leaves it alone
 pksql add-alias hits 'results/*.parquet'
 
+# Forget the quotes and your shell expands it first; pksql says so
+#   Warning: that is 3 files, not one path - your shell expanded the glob.
+
 # Available everywhere, not just this directory
 pksql add-alias --global scratch ~/scratch.duckdb
 

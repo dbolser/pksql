@@ -46,7 +46,13 @@ Use uv to manage dependencies, e.g. `uv run pytest`.
    first, so `add-alias` cannot report success on a file that every later
    command will choke on.
 
-6. **Streams**: results on stdout, timing and errors on stderr, so `-F json |
+6. **Unquoted globs**: the shell expands them before `add-alias` sees them, so
+   several filenames arrive joined by spaces. `_shell_expanded_files` spots that
+   (every part must exist, which excludes an ordinary path containing spaces)
+   and names the fix. A glob matching exactly one file is indistinguishable from
+   that filename typed deliberately, so it cannot be caught.
+
+7. **Streams**: results on stdout, timing and errors on stderr, so `-F json |
    jq` stays clean.
 
 ## Entry Point Configuration

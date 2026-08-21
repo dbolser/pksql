@@ -88,6 +88,26 @@ def test_add_alias_accepts_all_assignment_spellings(workspace):
     }
 
 
+def test_add_alias_warns_when_the_shell_expanded_a_glob(workspace):
+    for i in range(3):
+        _parquet(workspace / f"part{i}.parquet")
+    # What the shell hands over for an unquoted `part*.parquet`.
+    result = CliRunner().invoke(
+        cli, ["add-alias", "embed", "part0.parquet", "part1.parquet", "part2.parquet"]
+    )
+    assert result.exit_code == 0
+    assert "that is 3 files, not one path" in result.stderr
+    assert "add-alias embed" in result.stderr
+
+
+def test_add_alias_does_not_mistake_a_path_with_spaces_for_a_glob(workspace):
+    _parquet(workspace / "with space.parquet")
+    result = CliRunner().invoke(cli, ["add-alias", "spaced", "with space.parquet"])
+    assert result.exit_code == 0
+    assert result.stderr == ""
+    assert (workspace / ".pksql").read_text() == "spaced = with space.parquet\n"
+
+
 def test_add_alias_warns_when_nothing_matches(workspace):
     result = CliRunner().invoke(cli, ["add-alias", "gone", "/nowhere/gone.parquet"])
     assert result.exit_code == 0
