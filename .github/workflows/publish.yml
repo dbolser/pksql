@@ -1,27 +1,30 @@
-name: Publish to PyPI
+name: Publish to TestPyPI
 
 on:
   release:
     types: [created]
+  # Lets a publish be rehearsed against TestPyPI without cutting a release.
+  workflow_dispatch:
 
 jobs:
-  deploy:
+  publish:
     runs-on: ubuntu-latest
+    # Must match the environment named on TestPyPI's trusted publisher.
+    environment: testpypi
+    permissions:
+      # Trusted publishing (OIDC): GitHub mints a short-lived token that
+      # TestPyPI exchanges for upload rights, so there is no API token to store.
+      id-token: write
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
         with:
-          python-version: '3.x'
-      - uses: yezz123/setup-uv@v3
-      - name: Install build tools
-        run: uv pip install build twine
-      - name: Build and check package
-        run: |
-          uv run python -m build
-          uv run twine check dist/*
-      - name: Publish to PyPI
+          enable-cache: true
+      - name: Build sdist and wheel
+        run: uv build
+      - name: Check package metadata
+        run: uvx twine check dist/*
+      - name: Publish to TestPyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
-          # Remove the following line for actual publishing
           repository-url: https://test.pypi.org/legacy/

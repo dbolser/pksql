@@ -128,6 +128,7 @@ convenience, and the REPL was dropped.
 
 ## TODO
 
-- [ ] Publish to PyPI (after creating PyPI account and API token)
+- [ ] Publish to PyPI (TestPyPI is wired up via trusted publishing; real PyPI
+      needs its own publisher and the `repository-url` line dropped)
 - [ ] Add schema inspection commands
 - [ ] Support for saving query results to files

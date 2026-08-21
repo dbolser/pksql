@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
-    {name = "Dan Bolser", email = "dan@example.com"}  # Update with your actual email
+    {name = "Dan Bolser"}
 ]
 keywords = ["sql", "parquet", "cli", "duckdb"]
 classifiers = [
